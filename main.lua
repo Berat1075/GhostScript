@@ -1,8 +1,9 @@
 --[[
     ══════════════════════════════════════════════════════════════════
-    👻 GHOST SCRIPT | AUTO ROUND & RESUME SMART ENGINE
-    - Otomatik Round Tespiti (El bitince durur, yeni elde başlar)
-    - Ölüm Koruması (Ölünce otomatik kapatır, doğunca bekler)
+    👻 GHOST SCRIPT | MM2 AUTO FARM & FLY ENGINE (FULL AUTOMATIC ROUNDS)
+    - Otomatik Lobi / Oyun Kontrolü (Sonsuz Tur Desteği)
+    - Her Round Otomatik Yeniden Başlama & Kesintisiz Farm
+    - Fly (Uçma Modu) Entegre Edildi
     - Yerin Altından Kafa Dışarıda 20 Hızında Güvenli Farm
     - Tam Ekran Koyu Karşılama Ekranı & iPhone Dinamik Ada
     - Discord: https://discord.gg/KHVHAgQRCN & Anti-AFK
@@ -27,6 +28,7 @@ local Lighting = game:GetService("Lighting")
 local VirtualUser = game:GetService("VirtualUser")
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
+local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
@@ -45,11 +47,12 @@ local function getSafeGuiParent()
     return parent or LocalPlayer:FindFirstChildOfClass("PlayerGui")
 end
 
--- Ayarlar (TÜMÜ VARSAYILAN OLARAK KAPALI)
+-- Ayarlar
 local Config = {
-    AutoCoin = false,        -- Kullanıcı Ana Şalteri
-    UndergroundDepth = 1.8,  -- Kafa Dışarıda Yeraltı Seviyesi
-    FlySpeed = 20,           -- Kicklemeyen Güvenli Hız
+    AutoCoin = false,        
+    FlyEnabled = false,      
+    FlySpeed = 20,           
+    UndergroundDepth = 1.8,  
     FPSBoost = false,
     AntiAFK = false,
     CollectedCoins = {},
@@ -67,7 +70,7 @@ LocalPlayer.Idled:Connect(function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════
--- 🕊️ TİTREMESİZ VE DOĞAL FİZİK SİSTEMİ
+-- 🕊️ FİZİK VE FLY MOTORU
 -- ══════════════════════════════════════════════════════════════════
 local isPhysicsActive = false
 local bodyVel = nil
@@ -152,7 +155,7 @@ if getgenv then
 end
 ScreenGui.Parent = getSafeGuiParent()
 
--- 1. Dinamik Ada (Dynamic Island)
+-- Dinamik Ada
 local DynamicIsland = Instance.new("TextButton")
 DynamicIsland.Name = "DynamicIsland"
 DynamicIsland.Size = UDim2.new(0, 260, 0, 36)
@@ -206,11 +209,11 @@ local UICorner_Badge = Instance.new("UICorner")
 UICorner_Badge.CornerRadius = UDim.new(1, 0)
 UICorner_Badge.Parent = IslandBadge
 
--- 2. Genişletilmiş Ana Panel
+-- Ana Panel
 local MainFrame = Instance.new("Frame")
 MainFrame.Name = "MainFrame"
-MainFrame.Size = UDim2.new(0, 420, 0, 440)
-MainFrame.Position = UDim2.new(0.5, -210, 0.5, -220)
+MainFrame.Size = UDim2.new(0, 420, 0, 490)
+MainFrame.Position = UDim2.new(0.5, -210, 0.5, -245)
 MainFrame.BackgroundColor3 = Color3.fromRGB(10, 11, 15)
 MainFrame.BorderSizePixel = 0
 MainFrame.Visible = false
@@ -428,8 +431,8 @@ local function addToggle(title, desc, defaultVal, order, callback)
     end)
 end
 
--- 1. Sınırsız Ghost Auto-Coin
-addToggle("👻 Ghost Auto-Farm", "Otomatik round takibiyle sınırsız para toplar", Config.AutoCoin, 2, function(v)
+-- Toggles
+addToggle("👻 Ghost Auto-Farm", "Lobide durur, oyunda otomatik toplayarak kasar (Sonsuz Tur)", Config.AutoCoin, 2, function(v)
     Config.AutoCoin = v
     if not v then
         fullResetPhysics()
@@ -439,20 +442,27 @@ addToggle("👻 Ghost Auto-Farm", "Otomatik round takibiyle sınırsız para top
         IslandBadge.TextColor3 = Color3.fromRGB(240, 150, 60)
         TargetInfoText.Text = "📍 Karakter Normalde"
     else
+        table.clear(Config.CollectedCoins)
+        table.clear(Config.FailedAttempts)
         StatusText.Text = "● Ghost Modu: Aktif (20 Hız)"
         StatusText.TextColor3 = Color3.fromRGB(120, 235, 160)
         IslandBadge.Text = "● AKTİF"
         IslandBadge.TextColor3 = Color3.fromRGB(100, 240, 160)
-        TargetInfoText.Text = "📍 Yeraltı Otomatik Mod"
+        TargetInfoText.Text = "📍 Lobi / Oyun Taranıyor"
     end
 end)
 
--- 2. Anti-AFK
-addToggle("🛡️ Anti-AFK Koruması", "20 dakika hareketsizlik kickini %100 engeller", Config.AntiAFK, 3, function(v)
+addToggle("🕊️ Fly (Uçma Modu)", "Kameranızın baktığı yöne doğru özgürce uçar", Config.FlyEnabled, 3, function(v)
+    Config.FlyEnabled = v
+    if not v and not Config.AutoCoin then
+        fullResetPhysics()
+    end
+end)
+
+addToggle("🛡️ Anti-AFK Koruması", "20 dakika hareketsizlik kickini %100 engeller", Config.AntiAFK, 4, function(v)
     Config.AntiAFK = v
 end)
 
--- 3. FPS Boost
 local function applyFPSBoost(enable)
     pcall(function()
         if enable then
@@ -471,19 +481,19 @@ local function applyFPSBoost(enable)
     end)
 end
 
-addToggle("📉 Ultra FPS Boost", "Çoklu hesaplarda kasmayı ve ısınmayı önler", Config.FPSBoost, 4, function(v)
+addToggle("📉 Ultra FPS Boost", "Çoklu hesaplarda kasmayı ve ısınmayı önler", Config.FPSBoost, 5, function(v)
     Config.FPSBoost = v
     applyFPSBoost(v)
 end)
 
--- Panel İçi Discord Kartı
+-- Discord Kartı
 local DiscordCard = Instance.new("TextButton")
 DiscordCard.Name = "DiscordCard"
 DiscordCard.Size = UDim2.new(1, 0, 0, 48)
 DiscordCard.BackgroundColor3 = Color3.fromRGB(16, 19, 28)
 DiscordCard.BorderSizePixel = 0
 DiscordCard.AutoButtonColor = false
-DiscordCard.LayoutOrder = 5
+DiscordCard.LayoutOrder = 6
 DiscordCard.Text = ""
 DiscordCard.Parent = Container
 
@@ -562,7 +572,7 @@ end
 DiscordCard.MouseButton1Click:Connect(copyDiscord)
 
 -- ══════════════════════════════════════════════════════════════════
--- 🌟 TAM EKRAN DERİN KOYU KARŞILAMA EKRANI (WELCOME SCREEN)
+-- 🌟 TAM EKRAN DERİN KOYU KARŞILAMA EKRANI
 -- ══════════════════════════════════════════════════════════════════
 local WelcomeOverlay = Instance.new("Frame")
 WelcomeOverlay.Name = "WelcomeOverlay"
@@ -772,7 +782,7 @@ end
 StartBtn.MouseButton1Click:Connect(closeSplash)
 
 -- ══════════════════════════════════════════════════════════════════
--- 🔄 DİNAMİK ADA AÇILMA / KAPANMA ANİMASYONU
+-- 🔄 DİNAMİK ADA ANİMASYONLARI
 -- ══════════════════════════════════════════════════════════════════
 local isExpanded = false
 local isAnimating = false
@@ -789,8 +799,8 @@ local function toggleDynamicIsland()
         DynamicIsland.Visible = false
 
         TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 420, 0, 440),
-            Position = UDim2.new(0.5, -210, 0.5, -220)
+            Size = UDim2.new(0, 420, 0, 490),
+            Position = UDim2.new(0.5, -210, 0.5, -245)
         }):Play()
 
         task.delay(0.35, function()
@@ -847,7 +857,7 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 
 -- ══════════════════════════════════════════════════════════════════
--- 🚀 SIFIR KASAN NOCLIP ÖNBELLEĞİ & CAN / ÖLÜM TAKİBİ
+-- 🚀 NOCLIP ÖNBELLEĞİ & CAN / ÖLÜM TAKİBİ
 -- ══════════════════════════════════════════════════════════════════
 local charParts = {}
 local function updateCharCache(char)
@@ -859,10 +869,12 @@ local function updateCharCache(char)
             end
         end
         
-        local hum = char:WaitForChild("Humanoid", 5)
+        local hum = char:WaitForChild("Humanoid", 10)
         if hum then
             hum.Died:Connect(function()
                 fullResetPhysics()
+                table.clear(Config.CollectedCoins)
+                table.clear(Config.FailedAttempts)
                 if Config.AutoCoin then
                     StatusText.Text = "● Öldün (Yeni Round Bekleniyor)"
                     StatusText.TextColor3 = Color3.fromRGB(240, 100, 100)
@@ -889,17 +901,6 @@ LocalPlayer.CharacterAdded:Connect(function(char)
     end)
 end)
 
-RunService.Stepped:Connect(function()
-    if Config.AutoCoin and isPhysicsActive then
-        for i = 1, #charParts do
-            local p = charParts[i]
-            if p and p.Parent and p.CanCollide then
-                p.CanCollide = false
-            end
-        end
-    end
-end)
-
 -- FPS Sayacı
 local frameCount = 0
 local lastFpsUpdate = tick()
@@ -921,7 +922,7 @@ local function findAllCoins()
     local coins = {}
     local char = LocalPlayer.Character
 
-    for _, descendant in ipairs(workspace:GetDescendants()) do
+    for _, descendant in ipairs(Workspace:GetDescendants()) do
         local name = descendant.Name
         if name == "CoinContainer" or name == "Coin_Container" or name == "CoinArea" then
             for _, item in ipairs(descendant:GetChildren()) do
@@ -945,7 +946,7 @@ local function findAllCoins()
     end
 
     if #coins == 0 then
-        for _, obj in ipairs(workspace:GetDescendants()) do
+        for _, obj in ipairs(Workspace:GetDescendants()) do
             if obj.Name == "Coin_Server" or obj.Name == "CoinVisual" or (obj.Name == "Coin" and obj:IsA("BasePart")) then
                 local p = obj:IsA("BasePart") and obj or (obj:FindFirstChild("Coin") or obj:FindFirstChild("CoinVisual") or obj:FindFirstChildWhichIsA("BasePart"))
                 if p and p.Parent and not Config.CollectedCoins[p] and not Config.CollectedCoins[obj] and (Config.FailedAttempts[p] or 0) < 3 then
@@ -972,105 +973,141 @@ local function touchCoin(rootPart, coinPart)
 end
 
 -- ══════════════════════════════════════════════════════════════════
--- 🔄 ANA DÖNGÜ (OTOMATİK ROUND VE CAN TAKİP MOTORU)
+-- 🔄 ANA DÖNGÜ (HER ROUND DEVAM EDEN SONSUZ MOTOR)
 -- ══════════════════════════════════════════════════════════════════
 task.spawn(function()
+    local lastRoundWasEmpty = false
+
     while true do
         task.wait(0.03)
 
-        if Config.AutoCoin then
-            local char = LocalPlayer.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local char = LocalPlayer.Character
+        local root = char and char:FindFirstChild("HumanoidRootPart")
+        local hum = char and char:FindFirstChildOfClass("Humanoid")
 
-            -- Karakter Yaşıyorsa ve Canı Varsa:
-            if root and hum and hum.Health > 0 then
-                local coins = findAllCoins()
+        -- 1. FLY SİSTEMİ
+        if Config.FlyEnabled and root and hum and hum.Health > 0 then
+            setupPhysics(root)
+            hum.PlatformStand = true
 
-                -- Haritada Coin Varsa (Oyun Başlamışsa):
-                if #coins > 0 then
-                    local closestCoin = nil
-                    local shortestDist = math.huge
+            local cam = Workspace.CurrentCamera
+            local moveDir = Vector3.zero
 
-                    for _, coin in ipairs(coins) do
-                        if coin and coin.Parent and not Config.CollectedCoins[coin] then
-                            local d = (root.Position - coin.Position).Magnitude
-                            if d < shortestDist then
-                                shortestDist = d
-                                closestCoin = coin
-                            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveDir = moveDir + cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveDir = moveDir - cam.CFrame.LookVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveDir = moveDir - cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveDir = moveDir + cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then moveDir = moveDir + Vector3.new(0, 1, 0) end
+            if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then moveDir = moveDir - Vector3.new(0, 1, 0) end
+
+            if moveDir.Magnitude > 0 then
+                bodyVel.Velocity = moveDir.Unit * Config.FlySpeed
+            else
+                bodyVel.Velocity = Vector3.zero
+            end
+            bodyGyro.CFrame = cam.CFrame
+
+        -- 2. AUTO-FARM SİSTEMİ
+        elseif Config.AutoCoin and root and hum and hum.Health > 0 then
+            local coins = findAllCoins()
+
+            if #coins > 0 then
+                -- Yeni round başladığında hafızayı temizle
+                if lastRoundWasEmpty then
+                    table.clear(Config.CollectedCoins)
+                    table.clear(Config.FailedAttempts)
+                    lastRoundWasEmpty = false
+                end
+
+                local closestCoin = nil
+                local shortestDist = math.huge
+
+                for _, coin in ipairs(coins) do
+                    if coin and coin.Parent and not Config.CollectedCoins[coin] then
+                        local d = (root.Position - coin.Position).Magnitude
+                        if d < shortestDist then
+                            shortestDist = d
+                            closestCoin = coin
                         end
                     end
+                end
 
-                    if closestCoin and closestCoin.Parent then
-                        setupPhysics(root)
-                        hum.PlatformStand = false
+                if closestCoin and closestCoin.Parent then
+                    setupPhysics(root)
+                    hum.PlatformStand = false
 
-                        StatusText.Text = string.format("● Toplanıyor (%d Coin Kaldı)", #coins)
-                        StatusText.TextColor3 = Color3.fromRGB(120, 235, 160)
-                        TargetInfoText.Text = string.format("📍 Mesafe: %.1f metre", shortestDist)
+                    StatusText.Text = string.format("● Toplanıyor (%d Coin Kaldı)", #coins)
+                    StatusText.TextColor3 = Color3.fromRGB(120, 235, 160)
+                    TargetInfoText.Text = string.format("📍 Mesafe: %.1f metre", shortestDist)
 
-                        local targetPeekPos = Vector3.new(
-                            closestCoin.Position.X,
-                            closestCoin.Position.Y - Config.UndergroundDepth,
-                            closestCoin.Position.Z
-                        )
+                    local targetPeekPos = Vector3.new(
+                        closestCoin.Position.X,
+                        closestCoin.Position.Y - Config.UndergroundDepth,
+                        closestCoin.Position.Z
+                    )
 
-                        local startTime = tick()
+                    local startTime = tick()
 
-                        while Config.AutoCoin and closestCoin.Parent and not Config.CollectedCoins[closestCoin] and hum.Health > 0 do
-                            local currentPos = root.Position
-                            local dist = (currentPos - closestCoin.Position).Magnitude
+                    while Config.AutoCoin and not Config.FlyEnabled and closestCoin.Parent and not Config.CollectedCoins[closestCoin] and hum and hum.Health > 0 do
+                        local currentPos = root.Position
+                        local dist = (currentPos - closestCoin.Position).Magnitude
 
-                            if tick() - startTime > 2.2 then
-                                Config.FailedAttempts[closestCoin] = (Config.FailedAttempts[closestCoin] or 0) + 1
-                                break
-                            end
-
-                            if dist <= 3.2 then
-                                touchCoin(root, closestCoin)
-                                
-                                Config.CollectedCoins[closestCoin] = true
-                                if closestCoin.Parent then
-                                    Config.CollectedCoins[closestCoin.Parent] = true
-                                end
-                                break
-                            end
-
-                            local delta = (targetPeekPos - currentPos)
-                            if delta.Magnitude > 0.3 then
-                                local dir = delta.Unit
-                                bodyVel.Velocity = dir * Config.FlySpeed
-                                bodyGyro.CFrame = CFrame.lookAt(currentPos, currentPos + Vector3.new(dir.X, 0, dir.Z))
-                            else
-                                bodyVel.Velocity = Vector3.zero
-                            end
-
-                            RunService.Heartbeat:Wait()
+                        if tick() - startTime > 2.2 then
+                            Config.FailedAttempts[closestCoin] = (Config.FailedAttempts[closestCoin] or 0) + 1
+                            break
                         end
+
+                        if dist <= 3.2 then
+                            touchCoin(root, closestCoin)
+                            Config.CollectedCoins[closestCoin] = true
+                            if closestCoin.Parent then
+                                Config.CollectedCoins[closestCoin.Parent] = true
+                            end
+                            break
+                        end
+
+                        local delta = (targetPeekPos - currentPos)
+                        if delta.Magnitude > 0.3 then
+                            local dir = delta.Unit
+                            bodyVel.Velocity = dir * Config.FlySpeed
+                            bodyGyro.CFrame = CFrame.lookAt(currentPos, currentPos + Vector3.new(dir.X, 0, dir.Z))
+                        else
+                            bodyVel.Velocity = Vector3.zero
+                        end
+
+                        RunService.Heartbeat:Wait()
                     end
-                else
-                    -- Haritada coin kalmadığında (El bittiğinde / Lobideyken):
-                    if isPhysicsActive then
-                        fullResetPhysics()
-                    end
-                    StatusText.Text = "● Bekleme Modu (El Sonu / Lobi)"
-                    StatusText.TextColor3 = Color3.fromRGB(240, 180, 70)
-                    TargetInfoText.Text = "📍 Yeni el başlayınca otomatik açılacak"
-                    task.wait(0.5)
                 end
             else
-                -- Karakter öldüyse hemen fiziği sıfırla
+                -- Haritada coin yoksa / Lobi veya Round sonu
+                lastRoundWasEmpty = true
                 if isPhysicsActive then
                     fullResetPhysics()
                 end
-                task.wait(0.3)
+                StatusText.Text = "● Bekleme Modu (Lobidesiniz)"
+                StatusText.TextColor3 = Color3.fromRGB(240, 180, 70)
+                TargetInfoText.Text = "📍 Oyun başlayınca otomatik toplayacak"
+                task.wait(0.5)
             end
         else
             if isPhysicsActive then
                 fullResetPhysics()
             end
             task.wait(0.2)
+        end
+    end
+end)
+
+-- ══════════════════════════════════════════════════════════════════
+-- 👻 MÜKEMMEL NOCLIP MOTORU
+-- ══════════════════════════════════════════════════════════════════
+RunService.Stepped:Connect(function()
+    local char = LocalPlayer.Character
+    if char and (Config.AutoCoin or Config.FlyEnabled) then
+        for _, part in ipairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then
+                part.CanCollide = false
+            end
         end
     end
 end)
