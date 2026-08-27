@@ -1,16 +1,15 @@
 --[[
     ══════════════════════════════════════════════════════════════════
-    👻 GHOST SCRIPT | MM2 AUTO FARM & FLY ENGINE (FULL AUTOMATIC ROUNDS)
-    - Otomatik Lobi / Oyun Kontrolü (Sonsuz Tur Desteği)
-    - Her Round Otomatik Yeniden Başlama & Kesintisiz Farm
-    - Fly (Uçma Modu) Entegre Edildi
-    - Yerin Altından Kafa Dışarıda 20 Hızında Güvenli Farm
-    - Tam Ekran Koyu Karşılama Ekranı & iPhone Dinamik Ada
+    👻 GHOST SCRIPT | ULTRA-STABLE MM2 AUTO FARM ENGINE (v2.0 FIXED)
+    - Kesintisiz Tur / Harita Değişim Yönetimi (Sonsuz Döngü)
+    - Bellek / Referans Sızıntısı Koruması (Garbage Collection Fix)
+    - Yerin Altından 20 Hızında Güvenli Farm & Noclip
+    - Dinamik Ada GUI & Koyu Karşılama Ekranı
     - Discord: https://discord.gg/KHVHAgQRCN & Anti-AFK
     ══════════════════════════════════════════════════════════════════
 --]]
 
--- Eski Nesneleri & Motorları Temizle
+-- Temizlik
 pcall(function()
     if getgenv and getgenv().GhostScriptGui then
         getgenv().GhostScriptGui:Destroy()
@@ -32,7 +31,6 @@ local Workspace = game:GetService("Workspace")
 
 local LocalPlayer = Players.LocalPlayer or Players.PlayerAdded:Wait()
 
--- Xeno Güvenli GUI Taşıyıcı
 local function getSafeGuiParent()
     local parent = nil
     if typeof(gethui) == "function" then
@@ -47,7 +45,7 @@ local function getSafeGuiParent()
     return parent or LocalPlayer:FindFirstChildOfClass("PlayerGui")
 end
 
--- Ayarlar
+-- Sistem Ayarları
 local Config = {
     AutoCoin = false,        
     FlyEnabled = false,      
@@ -59,8 +57,14 @@ local Config = {
     FailedAttempts = {}
 }
 
+-- Hafıza Temizleme Fonksiyonu (Turlar arası kilitlenmeyi çözer)
+local function wipeMemory()
+    table.clear(Config.CollectedCoins)
+    table.clear(Config.FailedAttempts)
+end
+
 -- ══════════════════════════════════════════════════════════════════
--- 🛡️ ENTEGRE ANTI-AFK MOTORU
+-- 🛡️ ANTI-AFK ENGINE
 -- ══════════════════════════════════════════════════════════════════
 LocalPlayer.Idled:Connect(function()
     if Config.AntiAFK then
@@ -70,24 +74,11 @@ LocalPlayer.Idled:Connect(function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════
--- 🕊️ FİZİK VE FLY MOTORU
+-- 🕊️ KESİNTİSİZ FİZİK VE FLY MOTORU
 -- ══════════════════════════════════════════════════════════════════
 local isPhysicsActive = false
 local bodyVel = nil
 local bodyGyro = nil
-
-local function restoreCharacterCollisions(char)
-    if not char then return end
-    for _, part in ipairs(char:GetDescendants()) do
-        if part:IsA("BasePart") then
-            if part.Name == "HumanoidRootPart" then
-                part.CanCollide = false
-            else
-                part.CanCollide = true
-            end
-        end
-    end
-end
 
 local function fullResetPhysics()
     isPhysicsActive = false
@@ -98,15 +89,12 @@ local function fullResetPhysics()
         
         for _, desc in ipairs(char:GetDescendants()) do
             if desc:IsA("BodyVelocity") or desc:IsA("BodyGyro") or desc:IsA("BodyPosition") or desc:IsA("LinearVelocity") then
-                desc:Destroy()
+                pcall(function() desc:Destroy() end)
             end
         end
         
-        restoreCharacterCollisions(char)
-        
         if hum then
             hum.PlatformStand = false
-            hum.Sit = false
         end
         
         if root then
@@ -122,15 +110,15 @@ local function setupPhysics(root)
     if isPhysicsActive and bodyVel and bodyVel.Parent == root and bodyGyro and bodyGyro.Parent == root then
         return
     end
+    
+    fullResetPhysics()
     isPhysicsActive = true
 
-    if bodyVel then bodyVel:Destroy() end
     bodyVel = Instance.new("BodyVelocity")
     bodyVel.MaxForce = Vector3.new(400000, 400000, 400000)
     bodyVel.Velocity = Vector3.zero
     bodyVel.Parent = root
 
-    if bodyGyro then bodyGyro:Destroy() end
     bodyGyro = Instance.new("BodyGyro")
     bodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
     bodyGyro.P = 3000
@@ -142,17 +130,15 @@ end
 getgenv().GhostCleanUp = fullResetPhysics
 
 -- ══════════════════════════════════════════════════════════════════
--- 🎨 GUI ANA YAPISI & DİNAMİK ADA
+-- 🎨 GUI DESIGN (DİNAMİK ADA & MODERN PANEL)
 -- ══════════════════════════════════════════════════════════════════
 local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "GhostScript_AutoRound"
+ScreenGui.Name = "GhostScript_v2_Stable"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-if getgenv then
-    getgenv().GhostScriptGui = ScreenGui
-end
+if getgenv then getgenv().GhostScriptGui = ScreenGui end
 ScreenGui.Parent = getSafeGuiParent()
 
 -- Dinamik Ada
@@ -229,7 +215,7 @@ UIStroke_Main.Color = Color3.fromRGB(55, 62, 78)
 UIStroke_Main.Thickness = 1.4
 UIStroke_Main.Parent = MainFrame
 
--- Başlık Barı
+-- Başlık
 local TitleBar = Instance.new("Frame")
 TitleBar.Size = UDim2.new(1, 0, 0, 50)
 TitleBar.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
@@ -239,13 +225,6 @@ TitleBar.Parent = MainFrame
 local UICorner_Title = Instance.new("UICorner")
 UICorner_Title.CornerRadius = UDim.new(0, 14)
 UICorner_Title.Parent = TitleBar
-
-local TitleFix = Instance.new("Frame")
-TitleFix.Size = UDim2.new(1, 0, 0, 12)
-TitleFix.Position = UDim2.new(0, 0, 1, -12)
-TitleFix.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
-TitleFix.BorderSizePixel = 0
-TitleFix.Parent = TitleBar
 
 local TitleLogo = Instance.new("ImageLabel")
 TitleLogo.Size = UDim2.new(0, 30, 0, 30)
@@ -260,7 +239,7 @@ local TitleText = Instance.new("TextLabel")
 TitleText.Size = UDim2.new(1, -100, 0, 20)
 TitleText.Position = UDim2.new(0, 52, 0, 8)
 TitleText.BackgroundTransparency = 1
-TitleText.Text = "GHOST SCRIPT"
+TitleText.Text = "GHOST SCRIPT v2"
 TitleText.TextSize = 14
 TitleText.Font = Enum.Font.GothamBold
 TitleText.TextColor3 = Color3.fromRGB(245, 248, 255)
@@ -271,7 +250,7 @@ local SubTitle = Instance.new("TextLabel")
 SubTitle.Size = UDim2.new(1, -100, 0, 16)
 SubTitle.Position = UDim2.new(0, 52, 0, 27)
 SubTitle.BackgroundTransparency = 1
-SubTitle.Text = "KOENIGSEGG GHOST SQUADRON EDITION"
+SubTitle.Text = "STABLE MULTI-ROUND ENGINE"
 SubTitle.TextSize = 9
 SubTitle.Font = Enum.Font.GothamMedium
 SubTitle.TextColor3 = Color3.fromRGB(130, 140, 165)
@@ -326,7 +305,7 @@ local StatusText = Instance.new("TextLabel")
 StatusText.Size = UDim2.new(1, -20, 0, 20)
 StatusText.Position = UDim2.new(0, 12, 0, 8)
 StatusText.BackgroundTransparency = 1
-StatusText.Text = "● Sistem Hazır (Ghost Farm Kapalı)"
+StatusText.Text = "● Sistem Hazır"
 StatusText.Font = Enum.Font.GothamBold
 StatusText.TextSize = 13
 StatusText.TextColor3 = Color3.fromRGB(240, 160, 60)
@@ -337,7 +316,7 @@ local TargetInfoText = Instance.new("TextLabel")
 TargetInfoText.Size = UDim2.new(0.6, -10, 0, 18)
 TargetInfoText.Position = UDim2.new(0, 12, 0, 32)
 TargetInfoText.BackgroundTransparency = 1
-TargetInfoText.Text = "📍 Başlatmak için butona bas"
+TargetInfoText.Text = "📍 Farm Kapalı"
 TargetInfoText.Font = Enum.Font.Gotham
 TargetInfoText.TextSize = 11
 TargetInfoText.TextColor3 = Color3.fromRGB(140, 155, 180)
@@ -431,64 +410,47 @@ local function addToggle(title, desc, defaultVal, order, callback)
     end)
 end
 
--- Toggles
-addToggle("👻 Ghost Auto-Farm", "Lobide durur, oyunda otomatik toplayarak kasar (Sonsuz Tur)", Config.AutoCoin, 2, function(v)
+-- Toggles Entegrasyonu
+addToggle("👻 Ghost Auto-Farm", "Otomatik harita algılama & kesintisiz sonsuz tur desteği", Config.AutoCoin, 2, function(v)
     Config.AutoCoin = v
+    wipeMemory()
     if not v then
         fullResetPhysics()
-        StatusText.Text = "● Ghost Modu Kapatıldı"
+        StatusText.Text = "● Mod Kapalı"
         StatusText.TextColor3 = Color3.fromRGB(240, 150, 60)
         IslandBadge.Text = "● PASİF"
         IslandBadge.TextColor3 = Color3.fromRGB(240, 150, 60)
-        TargetInfoText.Text = "📍 Karakter Normalde"
+        TargetInfoText.Text = "📍 Normal Mod"
     else
-        table.clear(Config.CollectedCoins)
-        table.clear(Config.FailedAttempts)
-        StatusText.Text = "● Ghost Modu: Aktif (20 Hız)"
+        StatusText.Text = "● Ghost Modu: Aktif"
         StatusText.TextColor3 = Color3.fromRGB(120, 235, 160)
         IslandBadge.Text = "● AKTİF"
         IslandBadge.TextColor3 = Color3.fromRGB(100, 240, 160)
-        TargetInfoText.Text = "📍 Lobi / Oyun Taranıyor"
+        TargetInfoText.Text = "📍 Harita Aranıyor..."
     end
 end)
 
-addToggle("🕊️ Fly (Uçma Modu)", "Kameranızın baktığı yöne doğru özgürce uçar", Config.FlyEnabled, 3, function(v)
+addToggle("🕊️ Fly (Uçma Modu)", "Kamera açısına göre serbest uçuş", Config.FlyEnabled, 3, function(v)
     Config.FlyEnabled = v
     if not v and not Config.AutoCoin then
         fullResetPhysics()
     end
 end)
 
-addToggle("🛡️ Anti-AFK Koruması", "20 dakika hareketsizlik kickini %100 engeller", Config.AntiAFK, 4, function(v)
+addToggle("🛡️ Anti-AFK Koruması", "20 Dakikalık atılma engelleyici", Config.AntiAFK, 4, function(v)
     Config.AntiAFK = v
 end)
 
-local function applyFPSBoost(enable)
-    pcall(function()
-        if enable then
-            Lighting.GlobalShadows = false
-            Lighting.FogEnd = 9e9
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-            for _, v in ipairs(Lighting:GetChildren()) do
-                if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
-                    v.Enabled = false
-                end
-            end
-        else
-            Lighting.GlobalShadows = true
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-        end
-    end)
-end
-
-addToggle("📉 Ultra FPS Boost", "Çoklu hesaplarda kasmayı ve ısınmayı önler", Config.FPSBoost, 5, function(v)
+addToggle("📉 Ultra FPS Boost", "Çoklu hesap kasmalarını ve ısınmayı engeller", Config.FPSBoost, 5, function(v)
     Config.FPSBoost = v
-    applyFPSBoost(v)
+    pcall(function()
+        Lighting.GlobalShadows = not v
+        settings().Rendering.QualityLevel = v and Enum.QualityLevel.Level01 or Enum.QualityLevel.Automatic
+    end)
 end)
 
 -- Discord Kartı
 local DiscordCard = Instance.new("TextButton")
-DiscordCard.Name = "DiscordCard"
 DiscordCard.Size = UDim2.new(1, 0, 0, 48)
 DiscordCard.BackgroundColor3 = Color3.fromRGB(16, 19, 28)
 DiscordCard.BorderSizePixel = 0
@@ -506,19 +468,11 @@ DiscordStroke.Color = Color3.fromRGB(60, 70, 95)
 DiscordStroke.Thickness = 1.2
 DiscordStroke.Parent = DiscordCard
 
-local DiscordIcon = Instance.new("TextLabel")
-DiscordIcon.Size = UDim2.new(0, 24, 0, 24)
-DiscordIcon.Position = UDim2.new(0, 12, 0.5, -12)
-DiscordIcon.BackgroundTransparency = 1
-DiscordIcon.Text = "💬"
-DiscordIcon.TextSize = 16
-DiscordIcon.Parent = DiscordCard
-
 local DiscordText = Instance.new("TextLabel")
 DiscordText.Size = UDim2.new(1, -110, 0, 18)
-DiscordText.Position = UDim2.new(0, 40, 0, 6)
+DiscordText.Position = UDim2.new(0, 14, 0, 6)
 DiscordText.BackgroundTransparency = 1
-DiscordText.Text = "Discord: https://discord.gg/KHVHAgQRCN"
+DiscordText.Text = "💬 Discord: https://discord.gg/KHVHAgQRCN"
 DiscordText.Font = Enum.Font.GothamBold
 DiscordText.TextSize = 11
 DiscordText.TextColor3 = Color3.fromRGB(230, 238, 255)
@@ -527,9 +481,9 @@ DiscordText.Parent = DiscordCard
 
 local DiscordSub = Instance.new("TextLabel")
 DiscordSub.Size = UDim2.new(1, -110, 0, 14)
-DiscordSub.Position = UDim2.new(0, 40, 0, 26)
+DiscordSub.Position = UDim2.new(0, 14, 0, 26)
 DiscordSub.BackgroundTransparency = 1
-DiscordSub.Text = "Katılmak veya kopyalamak için tıkla"
+DiscordSub.Text = "Kopyalamak için tıkla"
 DiscordSub.Font = Enum.Font.Gotham
 DiscordSub.TextSize = 9
 DiscordSub.TextColor3 = Color3.fromRGB(130, 145, 175)
@@ -550,44 +504,30 @@ local CopyBadgeCorner = Instance.new("UICorner")
 CopyBadgeCorner.CornerRadius = UDim.new(0, 6)
 CopyBadgeCorner.Parent = CopyBadge
 
-local function copyDiscord()
-    local link = "https://discord.gg/KHVHAgQRCN"
-    if typeof(setclipboard) == "function" then
-        setclipboard(link)
-    end
+DiscordCard.MouseButton1Click:Connect(function()
+    if typeof(setclipboard) == "function" then setclipboard("https://discord.gg/KHVHAgQRCN") end
     CopyBadge.Text = "✓ Alındı"
     CopyBadge.BackgroundColor3 = Color3.fromRGB(35, 120, 70)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Ghost Script Discord",
-            Text = "Discord linki panoya kopyalandı!",
-            Duration = 3
-        })
-    end)
     task.delay(2, function()
         CopyBadge.Text = "Kopyala"
         CopyBadge.BackgroundColor3 = Color3.fromRGB(28, 34, 50)
     end)
-end
-DiscordCard.MouseButton1Click:Connect(copyDiscord)
+end)
 
 -- ══════════════════════════════════════════════════════════════════
--- 🌟 TAM EKRAN DERİN KOYU KARŞILAMA EKRANI
+-- 🌟 EKRAN KONTROLLERİ & ANİMASYON
 -- ══════════════════════════════════════════════════════════════════
 local WelcomeOverlay = Instance.new("Frame")
-WelcomeOverlay.Name = "WelcomeOverlay"
 WelcomeOverlay.Size = UDim2.new(1, 0, 1, 0)
-WelcomeOverlay.Position = UDim2.new(0, 0, 0, 0)
 WelcomeOverlay.BackgroundColor3 = Color3.fromRGB(6, 7, 9)
 WelcomeOverlay.BackgroundTransparency = 0.08
 WelcomeOverlay.ZIndex = 50
 WelcomeOverlay.Parent = ScreenGui
 
 local WelcomeBox = Instance.new("Frame")
-WelcomeBox.Size = UDim2.new(0, 520, 0, 330)
-WelcomeBox.Position = UDim2.new(0.5, -260, 0.5, -165)
+WelcomeBox.Size = UDim2.new(0, 500, 0, 260)
+WelcomeBox.Position = UDim2.new(0.5, -250, 0.5, -130)
 WelcomeBox.BackgroundColor3 = Color3.fromRGB(12, 14, 18)
-WelcomeBox.BorderSizePixel = 0
 WelcomeBox.ZIndex = 51
 WelcomeBox.Parent = WelcomeOverlay
 
@@ -600,21 +540,11 @@ WelcomeStroke.Color = Color3.fromRGB(65, 75, 95)
 WelcomeStroke.Thickness = 1.4
 WelcomeStroke.Parent = WelcomeBox
 
-local SplashLogo = Instance.new("ImageLabel")
-SplashLogo.Size = UDim2.new(0, 42, 0, 42)
-SplashLogo.Position = UDim2.new(0.5, -21, 0, 16)
-SplashLogo.BackgroundTransparency = 1
-SplashLogo.Image = "rbxassetid://15263884876"
-SplashLogo.ImageColor3 = Color3.fromRGB(245, 248, 255)
-SplashLogo.ScaleType = Enum.ScaleType.Fit
-SplashLogo.ZIndex = 52
-SplashLogo.Parent = WelcomeBox
-
 local SplashTitle = Instance.new("TextLabel")
-SplashTitle.Size = UDim2.new(1, 0, 0, 24)
-SplashTitle.Position = UDim2.new(0, 0, 0, 62)
+SplashTitle.Size = UDim2.new(1, 0, 0, 30)
+SplashTitle.Position = UDim2.new(0, 0, 0, 20)
 SplashTitle.BackgroundTransparency = 1
-SplashTitle.Text = "GHOST SCRIPT"
+SplashTitle.Text = "GHOST SCRIPT v2 STABLE"
 SplashTitle.Font = Enum.Font.GothamBold
 SplashTitle.TextSize = 18
 SplashTitle.TextColor3 = Color3.fromRGB(250, 252, 255)
@@ -622,144 +552,24 @@ SplashTitle.ZIndex = 52
 SplashTitle.Parent = WelcomeBox
 
 local InfoTR = Instance.new("TextLabel")
-InfoTR.Size = UDim2.new(1, -40, 0, 20)
-InfoTR.Position = UDim2.new(0, 20, 0, 94)
+InfoTR.Size = UDim2.new(1, -40, 0, 40)
+InfoTR.Position = UDim2.new(0, 20, 0, 60)
 InfoTR.BackgroundTransparency = 1
-InfoTR.Text = "⌨️ Sağ Shift tuşuna basarak veya Dinamik Ada'ya tıklayarak menüyü açabilirsiniz."
-InfoTR.Font = Enum.Font.GothamBold
+InfoTR.Text = "⌨️ Sağ Shift tuşu veya üstteki Dinamik Ada ile menüyü açıp kapatabilirsiniz.\nSonsuz tur desteği aktif edildi!"
+InfoTR.Font = Enum.Font.GothamMedium
 InfoTR.TextSize = 11
-InfoTR.TextColor3 = Color3.fromRGB(240, 245, 255)
+InfoTR.TextColor3 = Color3.fromRGB(200, 210, 235)
 InfoTR.ZIndex = 52
 InfoTR.Parent = WelcomeBox
 
-local InfoEN = Instance.new("TextLabel")
-InfoEN.Size = UDim2.new(1, -40, 0, 18)
-InfoEN.Position = UDim2.new(0, 20, 0, 114)
-InfoEN.BackgroundTransparency = 1
-InfoEN.Text = "Press Right Shift or click the Dynamic Island above to open the menu."
-InfoEN.Font = Enum.Font.Gotham
-InfoEN.TextSize = 10
-InfoEN.TextColor3 = Color3.fromRGB(150, 160, 185)
-InfoEN.ZIndex = 52
-InfoEN.Parent = WelcomeBox
-
-local SplashDiscordBtn = Instance.new("TextButton")
-SplashDiscordBtn.Size = UDim2.new(1, -40, 0, 46)
-SplashDiscordBtn.Position = UDim2.new(0, 20, 0, 142)
-SplashDiscordBtn.BackgroundColor3 = Color3.fromRGB(18, 22, 32)
-SplashDiscordBtn.Text = ""
-SplashDiscordBtn.AutoButtonColor = false
-SplashDiscordBtn.ZIndex = 52
-SplashDiscordBtn.Parent = WelcomeBox
-
-local SplashDiscCorner = Instance.new("UICorner")
-SplashDiscCorner.CornerRadius = UDim.new(0, 10)
-SplashDiscCorner.Parent = SplashDiscordBtn
-
-local SplashDiscStroke = Instance.new("UIStroke")
-SplashDiscStroke.Color = Color3.fromRGB(65, 75, 105)
-SplashDiscStroke.Thickness = 1.2
-SplashDiscStroke.Parent = SplashDiscordBtn
-
-local SplashDiscIcon = Instance.new("TextLabel")
-SplashDiscIcon.Size = UDim2.new(0, 26, 0, 26)
-SplashDiscIcon.Position = UDim2.new(0, 12, 0.5, -13)
-SplashDiscIcon.BackgroundTransparency = 1
-SplashDiscIcon.Text = "💬"
-SplashDiscIcon.TextSize = 16
-SplashDiscIcon.ZIndex = 53
-SplashDiscIcon.Parent = SplashDiscordBtn
-
-local SplashDiscText = Instance.new("TextLabel")
-SplashDiscText.Size = UDim2.new(1, -120, 0, 18)
-SplashDiscText.Position = UDim2.new(0, 44, 0, 6)
-SplashDiscText.BackgroundTransparency = 1
-SplashDiscText.Text = "Discord: https://discord.gg/KHVHAgQRCN"
-SplashDiscText.Font = Enum.Font.GothamBold
-SplashDiscText.TextSize = 11
-SplashDiscText.TextColor3 = Color3.fromRGB(240, 245, 255)
-SplashDiscText.TextXAlignment = Enum.TextXAlignment.Left
-SplashDiscText.ZIndex = 53
-SplashDiscText.Parent = SplashDiscordBtn
-
-local SplashDiscSub = Instance.new("TextLabel")
-SplashDiscSub.Size = UDim2.new(1, -120, 0, 14)
-SplashDiscSub.Position = UDim2.new(0, 44, 0, 25)
-SplashDiscSub.BackgroundTransparency = 1
-SplashDiscSub.Text = "Kopyalamak veya katılmak için tıkla (Click to copy)"
-SplashDiscSub.Font = Enum.Font.Gotham
-SplashDiscSub.TextSize = 9
-SplashDiscSub.TextColor3 = Color3.fromRGB(140, 155, 185)
-SplashDiscSub.TextXAlignment = Enum.TextXAlignment.Left
-SplashDiscSub.ZIndex = 53
-SplashDiscSub.Parent = SplashDiscordBtn
-
-local SplashCopyBadge = Instance.new("TextLabel")
-SplashCopyBadge.Size = UDim2.new(0, 68, 0, 24)
-SplashCopyBadge.Position = UDim2.new(1, -78, 0.5, -12)
-SplashCopyBadge.BackgroundColor3 = Color3.fromRGB(30, 36, 54)
-SplashCopyBadge.Text = "Kopyala"
-SplashCopyBadge.Font = Enum.Font.GothamBold
-SplashCopyBadge.TextSize = 10
-SplashCopyBadge.TextColor3 = Color3.fromRGB(210, 225, 255)
-SplashCopyBadge.ZIndex = 53
-SplashCopyBadge.Parent = SplashDiscordBtn
-
-local SplashCopyCorner = Instance.new("UICorner")
-SplashCopyCorner.CornerRadius = UDim.new(0, 6)
-SplashCopyCorner.Parent = SplashCopyBadge
-
-SplashDiscordBtn.MouseButton1Click:Connect(function()
-    local link = "https://discord.gg/KHVHAgQRCN"
-    if typeof(setclipboard) == "function" then
-        setclipboard(link)
-    end
-    SplashCopyBadge.Text = "✓ Alındı"
-    SplashCopyBadge.BackgroundColor3 = Color3.fromRGB(35, 120, 70)
-    pcall(function()
-        StarterGui:SetCore("SendNotification", {
-            Title = "Ghost Script Discord",
-            Text = "Discord linki panoya kopyalandı!",
-            Duration = 3
-        })
-    end)
-    task.delay(2, function()
-        SplashCopyBadge.Text = "Kopyala"
-        SplashCopyBadge.BackgroundColor3 = Color3.fromRGB(30, 36, 54)
-    end)
-end)
-
-local ThanksTR = Instance.new("TextLabel")
-ThanksTR.Size = UDim2.new(1, -40, 0, 20)
-ThanksTR.Position = UDim2.new(0, 20, 0, 202)
-ThanksTR.BackgroundTransparency = 1
-ThanksTR.Text = "✨ Bizi tercih ettiğiniz için teşekkür ederiz!"
-ThanksTR.Font = Enum.Font.GothamBold
-ThanksTR.TextSize = 12
-ThanksTR.TextColor3 = Color3.fromRGB(100, 235, 160)
-ThanksTR.ZIndex = 52
-ThanksTR.Parent = WelcomeBox
-
-local ThanksEN = Instance.new("TextLabel")
-ThanksEN.Size = UDim2.new(1, -40, 0, 16)
-ThanksEN.Position = UDim2.new(0, 20, 0, 222)
-ThanksEN.BackgroundTransparency = 1
-ThanksEN.Text = "Thank you for choosing us!"
-ThanksEN.Font = Enum.Font.GothamMedium
-ThanksEN.TextSize = 10
-ThanksEN.TextColor3 = Color3.fromRGB(140, 155, 180)
-ThanksEN.ZIndex = 52
-ThanksEN.Parent = WelcomeBox
-
 local StartBtn = Instance.new("TextButton")
-StartBtn.Size = UDim2.new(0, 180, 0, 36)
-StartBtn.Position = UDim2.new(0.5, -90, 0, 272)
+StartBtn.Size = UDim2.new(0, 160, 0, 36)
+StartBtn.Position = UDim2.new(0.5, -80, 0, 190)
 StartBtn.BackgroundColor3 = Color3.fromRGB(235, 240, 250)
 StartBtn.Text = "Başla / Start"
 StartBtn.TextColor3 = Color3.fromRGB(10, 12, 16)
-StartBtn.TextSize = 13
 StartBtn.Font = Enum.Font.GothamBold
-StartBtn.AutoButtonColor = false
+StartBtn.TextSize = 13
 StartBtn.ZIndex = 52
 StartBtn.Parent = WelcomeBox
 
@@ -767,88 +577,26 @@ local StartBtnCorner = Instance.new("UICorner")
 StartBtnCorner.CornerRadius = UDim.new(0, 8)
 StartBtnCorner.Parent = StartBtn
 
-local function closeSplash()
-    TweenService:Create(WelcomeOverlay, TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        BackgroundTransparency = 1
-    }):Play()
-    TweenService:Create(WelcomeBox, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.In), {
-        Position = UDim2.new(0.5, -260, 1.2, 0)
-    }):Play()
-    task.delay(0.25, function()
-        WelcomeOverlay:Destroy()
-    end)
-end
+StartBtn.MouseButton1Click:Connect(function()
+    WelcomeOverlay:Destroy()
+end)
 
-StartBtn.MouseButton1Click:Connect(closeSplash)
-
--- ══════════════════════════════════════════════════════════════════
--- 🔄 DİNAMİK ADA ANİMASYONLARI
--- ══════════════════════════════════════════════════════════════════
 local isExpanded = false
-local isAnimating = false
-
 local function toggleDynamicIsland()
-    if isAnimating then return end
-    isAnimating = true
     isExpanded = not isExpanded
-
     if isExpanded then
         MainFrame.Visible = true
-        MainFrame.Size = UDim2.new(0, 260, 0, 36)
-        MainFrame.Position = DynamicIsland.Position
+        MainFrame.Size = UDim2.new(0, 420, 0, 490)
+        MainFrame.Position = UDim2.new(0.5, -210, 0.5, -245)
         DynamicIsland.Visible = false
-
-        TweenService:Create(MainFrame, TweenInfo.new(0.35, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
-            Size = UDim2.new(0, 420, 0, 490),
-            Position = UDim2.new(0.5, -210, 0.5, -245)
-        }):Play()
-
-        task.delay(0.35, function()
-            isAnimating = false
-        end)
     else
-        TweenService:Create(MainFrame, TweenInfo.new(0.25, Enum.EasingStyle.Quart, Enum.EasingDirection.In), {
-            Size = UDim2.new(0, 260, 0, 36),
-            Position = DynamicIsland.Position
-        }):Play()
-
-        task.delay(0.25, function()
-            MainFrame.Visible = false
-            DynamicIsland.Visible = true
-            isAnimating = false
-        end)
+        MainFrame.Visible = false
+        DynamicIsland.Visible = true
     end
 end
 
 DynamicIsland.MouseButton1Click:Connect(toggleDynamicIsland)
 CloseBtn.MouseButton1Click:Connect(toggleDynamicIsland)
-
--- Sürükleme Mantığı
-local function makeDraggable(f, h)
-    local drag, dInput, start, pStart
-    h.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then
-            drag = true
-            start = i.Position
-            pStart = f.Position
-            i.Changed:Connect(function()
-                if i.UserInputState == Enum.UserInputState.End then drag = false end
-            end)
-        end
-    end)
-    f.InputChanged:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch then
-            dInput = i
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(i)
-        if i == dInput and drag then
-            local delta = i.Position - start
-            f.Position = UDim2.new(pStart.X.Scale, pStart.X.Offset + delta.X, pStart.Y.Scale, pStart.Y.Offset + delta.Y)
-        end
-    end)
-end
-makeDraggable(MainFrame, TitleBar)
 
 UserInputService.InputBegan:Connect(function(input, gpe)
     if not gpe and (input.KeyCode == Enum.KeyCode.RightShift or input.KeyCode == Enum.KeyCode.Insert) then
@@ -857,103 +605,42 @@ UserInputService.InputBegan:Connect(function(input, gpe)
 end)
 
 -- ══════════════════════════════════════════════════════════════════
--- 🚀 NOCLIP ÖNBELLEĞİ & CAN / ÖLÜM TAKİBİ
+-- 🛠️ HARİTA DİNAMİK ALGINAMA VE GELİŞMİŞ COIN TARAYICI
 -- ══════════════════════════════════════════════════════════════════
-local charParts = {}
-local function updateCharCache(char)
-    table.clear(charParts)
-    if char then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                table.insert(charParts, part)
-            end
-        end
-        
-        local hum = char:WaitForChild("Humanoid", 10)
-        if hum then
-            hum.Died:Connect(function()
-                fullResetPhysics()
-                table.clear(Config.CollectedCoins)
-                table.clear(Config.FailedAttempts)
-                if Config.AutoCoin then
-                    StatusText.Text = "● Öldün (Yeni Round Bekleniyor)"
-                    StatusText.TextColor3 = Color3.fromRGB(240, 100, 100)
-                    TargetInfoText.Text = "📍 Doğunca otomatik başlayacak"
-                end
-            end)
+
+-- MM2 Haritasını Bulur
+local function getCurrentMap()
+    for _, child in ipairs(Workspace:GetChildren()) do
+        if child:FindFirstChild("CoinContainer") or child:FindFirstChild("Coin_Container") or child:FindFirstChild("CoinArea") then
+            return child
         end
     end
+    return Workspace
 end
 
-if LocalPlayer.Character then
-    updateCharCache(LocalPlayer.Character)
-end
-
-LocalPlayer.CharacterAdded:Connect(function(char)
-    fullResetPhysics()
-    table.clear(Config.CollectedCoins)
-    table.clear(Config.FailedAttempts)
-    updateCharCache(char)
-    char.DescendantAdded:Connect(function(p)
-        if p:IsA("BasePart") then
-            table.insert(charParts, p)
-        end
-    end)
-end)
-
--- FPS Sayacı
-local frameCount = 0
-local lastFpsUpdate = tick()
-RunService.RenderStepped:Connect(function()
-    frameCount = frameCount + 1
-    local now = tick()
-    if now - lastFpsUpdate >= 1 then
-        local fps = math.floor(frameCount / (now - lastFpsUpdate))
-        FPSText.Text = string.format("⚡ Hız: 20 | FPS: %d", fps)
-        frameCount = 0
-        lastFpsUpdate = now
-    end
-end)
-
--- ══════════════════════════════════════════════════════════════════
--- 🧠 EVRENSEL MM2 COIN TARAYICI
--- ══════════════════════════════════════════════════════════════════
-local function findAllCoins()
+-- Dinamik Coin Tarama
+local function getValidCoins()
     local coins = {}
-    local char = LocalPlayer.Character
-
-    for _, descendant in ipairs(Workspace:GetDescendants()) do
-        local name = descendant.Name
-        if name == "CoinContainer" or name == "Coin_Container" or name == "CoinArea" then
-            for _, item in ipairs(descendant:GetChildren()) do
-                local part = nil
-                if item:IsA("BasePart") then
-                    part = item
-                elseif item:IsA("Model") then
-                    part = item:FindFirstChild("Coin") 
-                        or item:FindFirstChild("CoinVisual") 
-                        or item:FindFirstChild("Touch")
-                        or item:FindFirstChildWhichIsA("BasePart")
-                end
-
-                if part and part.Parent and not Config.CollectedCoins[part] and not Config.CollectedCoins[item] and (Config.FailedAttempts[part] or 0) < 3 then
-                    if not char or not part:IsDescendantOf(char) then
-                        table.insert(coins, part)
-                    end
-                end
-            end
+    local activeMap = getCurrentMap()
+    
+    local containers = {}
+    for _, desc in ipairs(activeMap:GetDescendants()) do
+        if desc.Name == "CoinContainer" or desc.Name == "Coin_Container" or desc.Name == "CoinArea" then
+            table.insert(containers, desc)
         end
     end
 
-    if #coins == 0 then
-        for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj.Name == "Coin_Server" or obj.Name == "CoinVisual" or (obj.Name == "Coin" and obj:IsA("BasePart")) then
-                local p = obj:IsA("BasePart") and obj or (obj:FindFirstChild("Coin") or obj:FindFirstChild("CoinVisual") or obj:FindFirstChildWhichIsA("BasePart"))
-                if p and p.Parent and not Config.CollectedCoins[p] and not Config.CollectedCoins[obj] and (Config.FailedAttempts[p] or 0) < 3 then
-                    if not char or not p:IsDescendantOf(char) then
-                        table.insert(coins, p)
-                    end
-                end
+    for _, container in ipairs(containers) do
+        for _, item in ipairs(container:GetChildren()) do
+            local targetPart = nil
+            if item:IsA("BasePart") then
+                targetPart = item
+            elseif item:IsA("Model") then
+                targetPart = item:FindFirstChild("Coin") or item:FindFirstChild("CoinVisual") or item:FindFirstChildWhichIsA("BasePart")
+            end
+
+            if targetPart and targetPart.Parent and not Config.CollectedCoins[targetPart] and (Config.FailedAttempts[targetPart] or 0) < 3 then
+                table.insert(coins, targetPart)
             end
         end
     end
@@ -961,23 +648,12 @@ local function findAllCoins()
     return coins
 end
 
--- Dokunma Tetikleyici
-local function touchCoin(rootPart, coinPart)
-    if typeof(firetouchinterest) == "function" then
-        pcall(function()
-            firetouchinterest(rootPart, coinPart, 0)
-            task.wait()
-            firetouchinterest(rootPart, coinPart, 1)
-        end)
-    end
-end
+-- ══════════════════════════════════════════════════════════════════
+-- 🔄 KESİNTİSİZ / DİNAMİK ANA DÖNGÜ (TUR BOZULMALARINI ÇÖZER)
+-- ══════════════════════════════════════════════════════════════════
+local lastMapName = ""
 
--- ══════════════════════════════════════════════════════════════════
--- 🔄 ANA DÖNGÜ (HER ROUND DEVAM EDEN SONSUZ MOTOR)
--- ══════════════════════════════════════════════════════════════════
 task.spawn(function()
-    local lastRoundWasEmpty = false
-
     while true do
         task.wait(0.03)
 
@@ -985,7 +661,14 @@ task.spawn(function()
         local root = char and char:FindFirstChild("HumanoidRootPart")
         local hum = char and char:FindFirstChildOfClass("Humanoid")
 
-        -- 1. FLY SİSTEMİ
+        -- Harita değişim kontrolü (Harita değiştiyse hafızayı otomatik sıfırla)
+        local currentMap = getCurrentMap()
+        if currentMap.Name ~= lastMapName then
+            lastMapName = currentMap.Name
+            wipeMemory()
+        end
+
+        -- 1. FLY MOTORU
         if Config.FlyEnabled and root and hum and hum.Health > 0 then
             setupPhysics(root)
             hum.PlatformStand = true
@@ -1007,70 +690,65 @@ task.spawn(function()
             end
             bodyGyro.CFrame = cam.CFrame
 
-        -- 2. AUTO-FARM SİSTEMİ
+        -- 2. AUTO-FARM MOTORU
         elseif Config.AutoCoin and root and hum and hum.Health > 0 then
-            local coins = findAllCoins()
+            local coins = getValidCoins()
 
             if #coins > 0 then
-                -- Yeni round başladığında hafızayı temizle
-                if lastRoundWasEmpty then
-                    table.clear(Config.CollectedCoins)
-                    table.clear(Config.FailedAttempts)
-                    lastRoundWasEmpty = false
-                end
+                setupPhysics(root)
+                hum.PlatformStand = false
 
+                -- En yakın Coin'i Bul
                 local closestCoin = nil
-                local shortestDist = math.huge
+                local minDistance = math.huge
 
                 for _, coin in ipairs(coins) do
-                    if coin and coin.Parent and not Config.CollectedCoins[coin] then
-                        local d = (root.Position - coin.Position).Magnitude
-                        if d < shortestDist then
-                            shortestDist = d
+                    if coin and coin.Parent then
+                        local dist = (root.Position - coin.Position).Magnitude
+                        if dist < minDistance then
+                            minDistance = dist
                             closestCoin = coin
                         end
                     end
                 end
 
                 if closestCoin and closestCoin.Parent then
-                    setupPhysics(root)
-                    hum.PlatformStand = false
-
-                    StatusText.Text = string.format("● Toplanıyor (%d Coin Kaldı)", #coins)
+                    StatusText.Text = string.format("● Toplanıyor (%d Coin)", #coins)
                     StatusText.TextColor3 = Color3.fromRGB(120, 235, 160)
-                    TargetInfoText.Text = string.format("📍 Mesafe: %.1f metre", shortestDist)
+                    TargetInfoText.Text = string.format("📍 Mesafe: %.1f m", minDistance)
 
-                    local targetPeekPos = Vector3.new(
-                        closestCoin.Position.X,
-                        closestCoin.Position.Y - Config.UndergroundDepth,
-                        closestCoin.Position.Z
-                    )
-
+                    local targetPosition = closestCoin.Position - Vector3.new(0, Config.UndergroundDepth, 0)
                     local startTime = tick()
 
+                    -- Coin'e gitme iç döngüsü
                     while Config.AutoCoin and not Config.FlyEnabled and closestCoin.Parent and not Config.CollectedCoins[closestCoin] and hum and hum.Health > 0 do
-                        local currentPos = root.Position
-                        local dist = (currentPos - closestCoin.Position).Magnitude
+                        local curPos = root.Position
+                        local dist = (curPos - closestCoin.Position).Magnitude
 
-                        if tick() - startTime > 2.2 then
+                        -- Takılma / Zaman Aşımı Kontrolü (2 saniyede ulaşamazsa es geç)
+                        if tick() - startTime > 2.0 then
                             Config.FailedAttempts[closestCoin] = (Config.FailedAttempts[closestCoin] or 0) + 1
                             break
                         end
 
-                        if dist <= 3.2 then
-                            touchCoin(root, closestCoin)
-                            Config.CollectedCoins[closestCoin] = true
-                            if closestCoin.Parent then
-                                Config.CollectedCoins[closestCoin.Parent] = true
+                        -- Coin Toplama Alanı
+                        if dist <= 3.5 then
+                            if typeof(firetouchinterest) == "function" then
+                                pcall(function()
+                                    firetouchinterest(root, closestCoin, 0)
+                                    task.wait()
+                                    firetouchinterest(root, closestCoin, 1)
+                                end)
                             end
+                            Config.CollectedCoins[closestCoin] = true
                             break
                         end
 
-                        local delta = (targetPeekPos - currentPos)
-                        if delta.Magnitude > 0.3 then
-                            local dir = delta.Unit
-                            bodyVel.Velocity = dir * Config.FlySpeed
-                            bodyGyro.CFrame = CFrame.lookAt(currentPos, currentPos + Vector3.new(dir.X, 0, dir.Z))
+                        -- Yerin altından hareket etme fiziği
+                        local dir = (targetPosition - curPos)
+                        if dir.Magnitude > 0.2 then
+                            bodyVel.Velocity = dir.Unit * Config.FlySpeed
+                            bodyGyro.CFrame = CFrame.lookAt(curPos, curPos + Vector3.new(dir.X, 0, dir.Z))
                         else
                             bodyVel.Velocity = Vector3.zero
                         end
@@ -1079,14 +757,13 @@ task.spawn(function()
                     end
                 end
             else
-                -- Haritada coin yoksa / Lobi veya Round sonu
-                lastRoundWasEmpty = true
+                -- Haritada Coin Kalmadı veya Lobi Sırası
                 if isPhysicsActive then
                     fullResetPhysics()
                 end
-                StatusText.Text = "● Bekleme Modu (Lobidesiniz)"
+                StatusText.Text = "● Bekleniyor (Tur/Lobi)"
                 StatusText.TextColor3 = Color3.fromRGB(240, 180, 70)
-                TargetInfoText.Text = "📍 Oyun başlayınca otomatik toplayacak"
+                TargetInfoText.Text = "📍 Yeni harita bekleniyor..."
                 task.wait(0.5)
             end
         else
@@ -1099,7 +776,7 @@ task.spawn(function()
 end)
 
 -- ══════════════════════════════════════════════════════════════════
--- 👻 MÜKEMMEL NOCLIP MOTORU
+-- 👻 MÜKEMMEL NOCLIP & FPS MOTORU
 -- ══════════════════════════════════════════════════════════════════
 RunService.Stepped:Connect(function()
     local char = LocalPlayer.Character
@@ -1109,5 +786,17 @@ RunService.Stepped:Connect(function()
                 part.CanCollide = false
             end
         end
+    end
+end)
+
+local frameCount = 0
+local lastFpsUpdate = tick()
+RunService.RenderStepped:Connect(function()
+    frameCount = frameCount + 1
+    local now = tick()
+    if now - lastFpsUpdate >= 1 then
+        FPSText.Text = string.format("⚡ Hız: 20 | FPS: %d", math.floor(frameCount / (now - lastFpsUpdate)))
+        frameCount = 0
+        lastFpsUpdate = now
     end
 end)
